@@ -58,15 +58,15 @@ object _02_climate {
         .withLocalDatacenter("datacenter1")
         .build()
     ) { session =>
-      exercise_ignore("Create the keyspace 'climate'") {
+      exercise("Create the keyspace 'climate'") {
         // TODO set the replication factor to the number of node that you have up to 3
         session.execute("""CREATE KEYSPACE IF NOT EXISTS climate WITH replication = {
                           |  'class':              'SimpleStrategy',
-                          |  'replication_factor': '???'
+                          |  'replication_factor': '3'
                           |}""".stripMargin)
       }
 
-      exercise_ignore("Create the table of temperatures by year") {
+      exercise("Create the table of temperatures by year") {
 
         /**
          * We want to store temperature data. We first need to create a
@@ -85,6 +85,7 @@ object _02_climate {
          * The partition key and the clustering keys form the primary
          * key. It has to be unique inside our cluster.
          */
+        session.execute("DROP TABLE IF EXISTS climate.temperature_by_year")
         session.execute(
           s"""CREATE TABLE IF NOT EXISTS climate.temperature_by_year (
              |  country            text,
@@ -95,13 +96,13 @@ object _02_climate {
              |  averageTemperature double,
              |  region             text,
              |  state              text,
-             |  
-             |  PRIMARY KEY ((???), ???)
+             |
+             |  PRIMARY KEY ((year), month, day, city)
              |)""".stripMargin
         )
       }
 
-      exercise_ignore("Insert a temperature") {
+      exercise("Insert a temperature") {
 
         /**
          * We now want to insert a temperature in our newly create
@@ -122,12 +123,12 @@ object _02_climate {
         session.execute(s"""INSERT INTO climate.temperature_by_year JSON '$temperature'""")
       }
 
-      exercise_ignore("Retrieve a temperature") {
+      exercise("Retrieve a temperature") {
         val result =
           session.execute(
             """SELECT *
               |FROM climate.temperature_by_year
-              |WHERE year = ???""".stripMargin
+              |WHERE year = 2020""".stripMargin
           )
 
         val temperatures = result.all().asScala.toList
@@ -137,7 +138,7 @@ object _02_climate {
         check(temperatures.head.getString("country") == "Minecraft")
       }
 
-      exercise_ignore("Insert temperatures from data/climate/city_temperature.csv.gz") {
+      exercise("Insert temperatures from data/climate/city_temperature.csv.gz") {
         val statement =
           session.prepare("""INSERT INTO climate.temperature_by_year
                             | (region,country,state,city,month,day,year,averageTemperature)
@@ -166,23 +167,24 @@ object _02_climate {
         val yearCount = rows.map(_.getInt("year")).distinct.length
 
         comment("What is the number of years covers by the dataset?")
-        check(yearCount == ??)
+        check(yearCount == 26)
       }
 
-      exercise_ignore("Design a table to query temperatures of a particular country (Algeria).") {
-        val queryStr =
+      exercise("Design a table to query temperatures of a particular country (Algeria).") {
+        session.execute("DROP TABLE IF EXISTS climate.climates_by_country")
+        session.execute(
           s"""CREATE TABLE IF NOT EXISTS climate.climates_by_country (
              |  country            text,
              |  year               int,
              |  month              int,
              |  day                int,
              |  city               text,
-             |  averageTemperature float,
+             |  averageTemperature double,
              |  region             text,
              |  state              text,
-             |  
-             |  PRIMARY KEY ((???), (???))
-             |)""".stripMargin
+             |
+             |  PRIMARY KEY ((country), year, month, day, city)
+             |)""".stripMargin)
 
         val statement =
           session.prepare("""INSERT INTO climate.climates_by_country
@@ -210,11 +212,10 @@ object _02_climate {
         // TODO get the temperature list for Algeria
         val result =
           session.execute(
-            """???"""
+            """SELECT * FROM climate.climates_by_country WHERE country = 'Algeria'"""
           )
 
         val algeriaTemperatures: List[Row] = result.all().asScala.toList
-
         check(algeriaTemperatures.length == 9265)
         check(algeriaTemperatures.map(_.getString("country")).distinct.length == 1)
       }

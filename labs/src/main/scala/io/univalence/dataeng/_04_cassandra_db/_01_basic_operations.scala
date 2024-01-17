@@ -128,7 +128,7 @@ object _01_basic_operations {
           .withLocalDatacenter("datacenter1")
           .build()
       ) { session =>
-        exercise_ignore("Check the cluster") {
+        exercise("Check the cluster") {
 
           /**
            * First, get information about the local Cassandra node (the
@@ -169,13 +169,13 @@ object _01_basic_operations {
            * Note: once done, ensures that this exercise is ignored
            * again.
            */
-          session.execute("""CREATE KEYSPACE IF NOT EXISTS ??? WITH replication = {
+          session.execute("""CREATE KEYSPACE IF NOT EXISTS education WITH replication = {
                             |  'class':              'SimpleStrategy',
-                            |  'replication_factor': '???'
+                            |  'replication_factor': '3'
                             |}""".stripMargin)
         }
 
-        exercise_ignore("Create a table") {
+        exercise("Create a table") {
 
           /**
            * The CQL query below will create a table.
@@ -186,12 +186,16 @@ object _01_basic_operations {
            * Note: once done, ensures that this exercise is ignored
            * again.
            */
-          session.execute("""CREATE TABLE IF NOT EXISTS ??? (
-                            |  ???
+          session.execute("DROP TABLE IF EXISTS education.user")
+          session.execute("""CREATE TABLE IF NOT EXISTS education.user (
+                            |  id   text,
+                            |  name text,
+                            |  age  int,
+                            |  PRIMARY KEY (id, name)
                             |)""".stripMargin)
         }
 
-        exercise_ignore("Add data") {
+        exercise("Add data") {
 
           /**
            * To add data in CQL is the same has with SQL. In the case of
@@ -229,9 +233,52 @@ object _01_basic_operations {
            * Dimitrios,38
            * Georgios,14
            */
+
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "3",  "name": "Emma-Sophie",  "age": 15 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "4",  "name": "Maria",  "age": 28 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "5",  "name": "Mario",  "age": 39 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "6",  "name": "Elena",  "age": 31 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "7",  "name": "Andrew",  "age": 64 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "8",  "name": "Panagiotis",  "age": 66 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "9",  "name": "Anastasios",  "age": 39 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "10",  "name": "Pierre",  "age": 77 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "11",  "name": "Logan",  "age": 58 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "12",  "name": "George",  "age": 62 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "13",  "name": "Elise",  "age": 91 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "14",  "name": "Alan",  "age": 22 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "15",  "name": "Dimitrios",  "age": 38 }'"""
+          )
+          session.execute(
+            """INSERT INTO education.user JSON '{  "id": "16",  "name": "Georgios",  "age": 14 }'"""
+          )
         }
 
-        exercise_ignore("Query data") {
+        exercise("Query data") {
 
           /**
            * TODO Use a SELECT statement to get all users from the table
@@ -239,28 +286,28 @@ object _01_basic_operations {
            * Note: it is a good idea to LIMIT the number of records in
            * output, while doing data exploration.
            */
-          val result = session.execute("""SELECT id, name, age FROM ??? LIMIT 100""")
+          val result = session.execute("""SELECT id, name, age FROM education.user LIMIT 100""")
 
           println("List of all users")
           display(result)
         }
 
-        exercise_ignore("Query data as JSON document") {
+        exercise("Query data as JSON document") {
 
           /**
            * TODO Use a SELECT statement to get all users from the table
            * in JSON format
            */
-          val result = session.execute("""SELECT JSON id, name, age FROM ??? LIMIT 100""")
+          val result = session.execute("""SELECT JSON id, name, age FROM education.user LIMIT 100""")
 
           println("List of all users (JSON)")
           display(result)
         }
 
-        exercise_ignore("Query with constraint") {
+        exercise("Query with constraint") {
 
           /** TODO make this query return the user with id '123' */
-          val result = session.execute("""SELECT id, name, age FROM ??? WHERE ??? LIMIT 100""")
+          val result = session.execute("""SELECT id, name, age FROM education.user WHERE id = '123' LIMIT 100""")
           val rows   = result.all().asScala.toList
 
           comment("Data collected")
@@ -272,7 +319,7 @@ object _01_basic_operations {
           check(rows.head.getString("id") == "123")
         }
 
-        exercise_ignore("Use prepared statement") {
+        exercise("Use prepared statement") {
 
           /**
            * Sometimes, you need to use query that depends on external
@@ -316,7 +363,7 @@ object _01_basic_operations {
              * TODO Complete the query below so it returns a user
              * according to the given ID.
              */
-            val statement = session.prepare("""SELECT id, name, age FROM ??? WHERE ???""")
+            val statement = session.prepare("""SELECT id, name, age FROM education.user WHERE id = ?""")
             val result    = session.execute(statement.bind(id))
             val rows      = result.all().asScala.toList
 
@@ -333,7 +380,7 @@ object _01_basic_operations {
           check(user == User("123", "jon", 32))
         }
 
-        exercise_ignore("Find many users") {
+        exercise("Find many users") {
 
           def findUsersByIds(ids: List[String]): List[User] = {
 
@@ -350,7 +397,7 @@ object _01_basic_operations {
              * `(<value1>, <value2>, ...)`)
              */
             val idList    = ids.mkString("('", "', '", "')")
-            val statement = session.prepare("""SELECT id, name, age FROM ??? WHERE ???""")
+            val statement = session.prepare("""SELECT id, name, age FROM education.user WHERE id IN ?""")
             val result    = session.execute(statement.bind(ids.asJava))
             val rows      = result.all().asScala.toList
 
@@ -371,12 +418,12 @@ object _01_basic_operations {
           )
         }
 
-        exercise_ignore("Query with constraint on non-key field") {
+        exercise("Query with constraint on non-key field") {
 
           /**
            * TODO Try to get users whose age is greater or equal to 30.
            */
-          val result = session.execute("""SELECT id, name, age FROM univalence.user WHERE ???""")
+          val result = session.execute("""SELECT id, name, age FROM education.user WHERE age >= 30 ALLOW FILTERING""")
 
           /**
            * So you have a error message...
